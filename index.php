@@ -52,6 +52,21 @@ $uri = explode('/', $uri);
 $uri = array_filter($uri);
 $uri = array_values($uri);
 
+// Determine if the last segment is an ID
+$lastSegment = end($uri);
+$id = null;
+
+// If the last segment is numeric, it's likely an ID
+if (is_numeric($lastSegment)) {
+    $id = $lastSegment;
+    // Remove the ID from the URI array to get the resource name
+    array_pop($uri);
+    $resource = end($uri);
+} else {
+    // The last segment is the resource name
+    $resource = $lastSegment;
+}
+
 // Get the base folder name (e.g., 'laralink-api')
 $baseFolder = isset($uri[count($uri) - 2]) ? $uri[count($uri) - 2] : '';
 
