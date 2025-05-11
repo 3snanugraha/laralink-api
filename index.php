@@ -48,36 +48,48 @@ if (!$apiKeyMiddleware->validate()) {
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $uri = explode('/', $uri);
 
+
 // Remove empty segments
 $uri = array_filter($uri);
 $uri = array_values($uri);
 
-// Determine if the last segment is an ID
-$lastSegment = end($uri);
+// Initialize variables
+$resource = '';
 $id = null;
+$subresource = null;
 
-// If the last segment is numeric, it's likely an ID
-if (is_numeric($lastSegment)) {
-    $id = $lastSegment;
-    // Remove the ID from the URI array to get the resource name
-    array_pop($uri);
-    $resource = end($uri);
-} else {
-    // The last segment is the resource name
-    $resource = $lastSegment;
+// Get the total number of segments
+$uriCount = count($uri);
+
+// Extract resource, ID, and subresource from URI
+if ($uriCount > 0) {
+    // Check if we have at least one segment
+    $lastIndex = $uriCount - 1;
+    
+    // The last segment could be either the resource name or an ID
+    if (is_numeric($uri[$lastIndex])) {
+        // If the last segment is numeric, it's an ID
+        $id = $uri[$lastIndex];
+        
+        // The second-to-last segment is the resource
+        if ($lastIndex > 0) {
+            $resource = $uri[$lastIndex - 1];
+        }
+        
+        // Check if there's a subresource (for routes like /reports/1/media)
+        if ($lastIndex > 1 && isset($uri[$lastIndex + 1])) {
+            $subresource = $uri[$lastIndex + 1];
+        }
+    } else {
+        // If the last segment is not numeric, it's the resource name
+        $resource = $uri[$lastIndex];
+        
+        // Check if there's a subresource specified in the URL
+        if (isset($uri[$lastIndex + 1])) {
+            $subresource = $uri[$lastIndex + 1];
+        }
+    }
 }
-
-// Get the base folder name (e.g., 'laralink-api')
-$baseFolder = isset($uri[count($uri) - 2]) ? $uri[count($uri) - 2] : '';
-
-// Get the resource name (e.g., 'users', 'reports')
-$resource = isset($uri[count($uri) - 1]) ? $uri[count($uri) - 1] : '';
-
-// Get ID if present
-$id = isset($uri[count($uri)]) ? $uri[count($uri)] : null;
-
-// Get subresource if present
-$subresource = isset($uri[count($uri) + 1]) ? $uri[count($uri) + 1] : null;
 
 // Get HTTP method
 $method = $_SERVER['REQUEST_METHOD'];
