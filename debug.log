@@ -1,0 +1,105 @@
+[2025-05-12 17:27:46] Request started: POST /laralink-api/reports/1/media
+[2025-05-12 17:27:46] Database connection created
+[2025-05-12 17:27:46] API key validation successful
+[2025-05-12 17:27:46] Original URI segments: ["","laralink-api","reports","1","media"]
+[2025-05-12 17:27:46] Filtered URI segments: ["laralink-api","reports","1","media"]
+[2025-05-12 17:27:46] URI segment count: 4
+[2025-05-12 17:27:46] Last index: 3, Last segment: media
+[2025-05-12 17:27:46] Parsed route - Resource: 'reports', ID: '1', Subresource: 'media'
+[2025-05-12 17:27:46] HTTP Method: POST
+[2025-05-12 17:27:46] Request body: 
+[2025-05-12 17:27:46] Files uploaded: {"media":{"name":"javascript.jpg","full_path":"javascript.jpg","type":"image\/jpeg","tmp_name":"C:\\Users\\user\\AppData\\Local\\Temp\\php3220.tmp","error":0,"size":96378}}
+[2025-05-12 17:27:46] POST data: {"media_type":"image"}
+[2025-05-12 17:27:46] Routing to controller for resource: reports
+[2025-05-12 17:27:46] ReportController initialized
+[2025-05-12 17:27:46] Calling controller->handleRequest(POST, 1, media)
+[2025-05-12 17:27:46] Request completed
+[2025-05-12 17:29:05] Request started: POST /laralink-api/reports
+[2025-05-12 17:29:05] Database connection created
+[2025-05-12 17:29:05] API key validation successful
+[2025-05-12 17:29:05] Original URI segments: ["","laralink-api","reports"]
+[2025-05-12 17:29:05] Filtered URI segments: ["laralink-api","reports"]
+[2025-05-12 17:29:05] URI segment count: 2
+[2025-05-12 17:29:05] Last index: 1, Last segment: reports
+[2025-05-12 17:29:05] Parsed route - Resource: 'reports', ID: '', Subresource: ''
+[2025-05-12 17:29:05] HTTP Method: POST
+[2025-05-12 17:29:05] Request body: {
+  "user_id": 1,
+  "violence_type_id": 1,
+  "perpetrator": "Unknown person",
+  "incident_date": "2023-06-15 14:30:00",
+  "incident_location_lat": -6.2088,
+  "incident_location_lng": 106.8456,
+  "location_address": "Jakarta",
+  "description": "Test report description",
+  "is_anonymous": false
+}
+
+[2025-05-12 17:29:05] Routing to controller for resource: reports
+[2025-05-12 17:29:05] ReportController initialized
+[2025-05-12 17:29:05] Calling controller->handleRequest(POST, , )
+[2025-05-12 17:29:05] Request completed
+[2025-05-12 17:29:28] Request started: POST /laralink-api/reports/1/media
+[2025-05-12 17:29:28] Database connection created
+[2025-05-12 17:29:28] API key validation successful
+[2025-05-12 17:29:28] Original URI segments: ["","laralink-api","reports","1","media"]
+[2025-05-12 17:29:28] Filtered URI segments: ["laralink-api","reports","1","media"]
+[2025-05-12 17:29:28] URI segment count: 4
+[2025-05-12 17:29:28] Last index: 3, Last segment: media
+[2025-05-12 17:29:28] Parsed route - Resource: 'reports', ID: '1', Subresource: 'media'
+[2025-05-12 17:29:28] HTTP Method: POST
+[2025-05-12 17:29:28] Request body: 
+[2025-05-12 17:29:28] Files uploaded: {"media":{"name":"javascript.jpg","full_path":"javascript.jpg","type":"image\/jpeg","tmp_name":"C:\\Users\\user\\AppData\\Local\\Temp\\phpBFF5.tmp","error":0,"size":96378}}
+[2025-05-12 17:29:28] POST data: {"media_type":"image"}
+[2025-05-12 17:29:28] Routing to controller for resource: reports
+[2025-05-12 17:29:28] ReportController initialized
+[2025-05-12 17:29:28] Calling controller->handleRequest(POST, 1, media)
+[2025-05-12 17:29:28] Request completed
+[2025-05-12 17:29:33] Request started: POST /laralink-api/reports/1/media
+[2025-05-12 17:29:33] Database connection created
+[2025-05-12 17:29:33] API key validation successful
+[2025-05-12 17:29:33] Original URI segments: ["","laralink-api","reports","1","media"]
+[2025-05-12 17:29:33] Filtered URI segments: ["laralink-api","reports","1","media"]
+[2025-05-12 17:29:33] URI segment count: 4
+[2025-05-12 17:29:33] Last index: 3, Last segment: media
+[2025-05-12 17:29:33] Parsed route - Resource: 'reports', ID: '1', Subresource: 'media'
+[2025-05-12 17:29:33] HTTP Method: POST
+[2025-05-12 17:29:33] Request body: 
+[2025-05-12 17:29:33] Files uploaded: {"media":{"name":"javascript.jpg","full_path":"javascript.jpg","type":"image\/jpeg","tmp_name":"C:\\Users\\user\\AppData\\Local\\Temp\\phpD294.tmp","error":0,"size":96378}}
+[2025-05-12 17:29:33] POST data: {"media_type":"image"}
+[2025-05-12 17:29:33] Routing to controller for resource: reports
+[2025-05-12 17:29:33] ReportController initialized
+[2025-05-12 17:29:33] Calling controller->handleRequest(POST, 1, media)
+[2025-05-12 17:29:33] Request completed
+[2025-05-12 17:29:34] Request started: POST /laralink-api/reports/1/media
+[2025-05-12 17:29:34] Database connection created
+[2025-05-12 17:29:34] API key validation successful
+[2025-05-12 17:29:34] Original URI segments: ["","laralink-api","reports","1","media"]
+[2025-05-12 17:29:34] Filtered URI segments: ["laralink-api","reports","1","media"]
+[2025-05-12 17:29:34] URI segment count: 4
+[2025-05-12 17:29:34] Last index: 3, Last segment: media
+[2025-05-12 17:29:34] Parsed route - Resource: 'reports', ID: '1', Subresource: 'media'
+[2025-05-12 17:29:34] HTTP Method: POST
+[2025-05-12 17:29:34] Request body: 
+[2025-05-12 17:29:34] Files uploaded: {"media":{"name":"javascript.jpg","full_path":"javascript.jpg","type":"image\/jpeg","tmp_name":"C:\\Users\\user\\AppData\\Local\\Temp\\phpD709.tmp","error":0,"size":96378}}
+[2025-05-12 17:29:34] POST data: {"media_type":"image"}
+[2025-05-12 17:29:34] Routing to controller for resource: reports
+[2025-05-12 17:29:34] ReportController initialized
+[2025-05-12 17:29:34] Calling controller->handleRequest(POST, 1, media)
+[2025-05-12 17:29:34] Request completed
+[2025-05-12 17:31:32] Request started: POST /laralink-api/reports/1/media
+[2025-05-12 17:31:32] Database connection created
+[2025-05-12 17:31:32] API key validation successful
+[2025-05-12 17:31:32] Original URI segments: ["","laralink-api","reports","1","media"]
+[2025-05-12 17:31:32] Filtered URI segments: ["laralink-api","reports","1","media"]
+[2025-05-12 17:31:32] URI segment count: 4
+[2025-05-12 17:31:32] Last index: 3, Last segment: media
+[2025-05-12 17:31:32] Parsed route - Resource: 'reports', ID: '1', Subresource: 'media'
+[2025-05-12 17:31:32] HTTP Method: POST
+[2025-05-12 17:31:32] Request body: 
+[2025-05-12 17:31:32] Files uploaded: {"media":{"name":"javascript.jpg","full_path":"javascript.jpg","type":"image\/jpeg","tmp_name":"C:\\Users\\user\\AppData\\Local\\Temp\\phpA468.tmp","error":0,"size":96378}}
+[2025-05-12 17:31:32] POST data: {"media_type":"image"}
+[2025-05-12 17:31:32] Routing to controller for resource: reports
+[2025-05-12 17:31:32] ReportController initialized
+[2025-05-12 17:31:32] Calling controller->handleRequest(POST, 1, media)
+[2025-05-12 17:31:32] Request completed

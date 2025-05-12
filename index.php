@@ -33,7 +33,6 @@ $database = new Database();
 $db = $database->getConnection();
 
 // Validate API key for all requests
-// Make sure ApiKeyMiddleware constructor accepts a database connection
 $apiKeyMiddleware = new ApiKeyMiddleware();
 if (!$apiKeyMiddleware->validate()) {
     http_response_code(401);
@@ -47,7 +46,6 @@ if (!$apiKeyMiddleware->validate()) {
 // Parse the URL
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $uri = explode('/', $uri);
-
 
 // Remove empty segments
 $uri = array_filter($uri);
@@ -65,28 +63,33 @@ $uriCount = count($uri);
 if ($uriCount > 0) {
     // Check if we have at least one segment
     $lastIndex = $uriCount - 1;
-    
+
     // The last segment could be either the resource name or an ID
     if (is_numeric($uri[$lastIndex])) {
         // If the last segment is numeric, it's an ID
         $id = $uri[$lastIndex];
-        
+
         // The second-to-last segment is the resource
         if ($lastIndex > 0) {
             $resource = $uri[$lastIndex - 1];
         }
-        
+
         // Check if there's a subresource (for routes like /reports/1/media)
-        if ($lastIndex > 1 && isset($uri[$lastIndex + 1])) {
+        if ($lastIndex < count($uri) - 1) {
             $subresource = $uri[$lastIndex + 1];
         }
     } else {
-        // If the last segment is not numeric, it's the resource name
-        $resource = $uri[$lastIndex];
-        
-        // Check if there's a subresource specified in the URL
-        if (isset($uri[$lastIndex + 1])) {
-            $subresource = $uri[$lastIndex + 1];
+        // If the last segment is not numeric, it's the resource name or a subresource
+        // Check if the second-to-last segment is numeric (for routes like /reports/1/media)
+        if ($lastIndex > 0 && is_numeric($uri[$lastIndex - 1])) {
+            $subresource = $uri[$lastIndex];
+            $id = $uri[$lastIndex - 1];
+            if ($lastIndex > 1) {
+                $resource = $uri[$lastIndex - 2];
+            }
+        } else {
+            // It's just a resource name
+            $resource = $uri[$lastIndex];
         }
     }
 }
@@ -97,11 +100,11 @@ $method = $_SERVER['REQUEST_METHOD'];
 // Get request body for POST and PUT requests
 $requestBody = null;
 if ($method === 'POST' || $method === 'PUT') {
-    $requestBody = json_decode(file_get_contents('php://input'), true);
+    $requestBody = file_get_contents('php://input');
+    $requestBody = json_decode($requestBody, true);
 }
 
 // Log the API request
-// Make sure Logger constructor accepts a database connection
 $logger = new Logger();
 $logger->logRequest();
 
@@ -110,7 +113,6 @@ switch ($resource) {
     case 'users':
         require_once 'controllers/UserController.php';
         require_once 'models/User.php';
-        // Make sure UserController constructor accepts a database connection
         $controller = new UserController();
         break;
 
@@ -118,28 +120,24 @@ switch ($resource) {
         require_once 'controllers/ReportController.php';
         require_once 'models/Report.php';
         require_once 'models/ReportMedia.php';
-        // Make sure ReportController constructor accepts a database connection
         $controller = new ReportController();
         break;
 
     case 'violence-types':
         require_once 'controllers/ViolenceTypeController.php';
         require_once 'models/ViolenceType.php';
-        // Make sure ViolenceTypeController constructor accepts a database connection
         $controller = new ViolenceTypeController();
         break;
 
     case 'materials':
         require_once 'controllers/MaterialController.php';
         require_once 'models/ViolenceMaterial.php';
-        // Make sure MaterialController constructor accepts a database connection
         $controller = new MaterialController();
         break;
 
     case 'contacts':
         require_once 'controllers/ContactController.php';
         require_once 'models/ContactInfo.php';
-        // Make sure ContactController constructor accepts a database connection
         $controller = new ContactController();
         break;
 
@@ -157,7 +155,6 @@ switch ($resource) {
 
 // Call the appropriate controller method based on HTTP method and parameters
 if (isset($controller)) {
-    // Make sure handleRequest method accepts the correct number of parameters
     $controller->handleRequest($method, $id, $subresource);
 } else {
     http_response_code(404);
