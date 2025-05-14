@@ -48,6 +48,25 @@ class MaterialController
     private function getAllMaterials()
     {
         $violenceTypeId = isset($_GET['violence_type_id']) ? htmlspecialchars(strip_tags($_GET['violence_type_id'])) : null;
+        $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
+        $limit = isset($_GET['limit']) ? (int) $_GET['limit'] : 10;
+        $offset = ($page - 1) * $limit;
+
+        // Count total records for pagination
+        $countQuery = "SELECT COUNT(*) as total FROM violence_materials";
+        if ($violenceTypeId) {
+            $countQuery .= " WHERE violence_type_id = ?";
+        }
+
+        $countStmt = $this->db->prepare($countQuery);
+        if ($violenceTypeId) {
+            $countStmt->execute([$violenceTypeId]);
+        } else {
+            $countStmt->execute();
+        }
+
+        $totalRecords = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+        $totalPages = ceil($totalRecords / $limit);
 
         // Base query
         $query = "SELECT m.*, vt.type_name 
@@ -59,7 +78,7 @@ class MaterialController
             $query .= " WHERE m.violence_type_id = ?";
         }
 
-        $query .= " ORDER BY m.created_at DESC";
+        $query .= " ORDER BY m.created_at DESC LIMIT $offset, $limit";
 
         $stmt = $this->db->prepare($query);
 
@@ -74,7 +93,15 @@ class MaterialController
         http_response_code(RESPONSE_OK);
         echo json_encode([
             'status' => 'success',
-            'data' => $materials
+            'data' => [
+                'materials' => $materials,
+                'pagination' => [
+                    'total_records' => $totalRecords,
+                    'total_pages' => $totalPages,
+                    'current_page' => $page,
+                    'limit' => $limit
+                ]
+            ]
         ]);
     }
 

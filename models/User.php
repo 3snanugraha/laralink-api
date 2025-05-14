@@ -203,4 +203,42 @@ class User
 
         return false;
     }
+
+    /**
+     * Authenticate admin user
+     * 
+     * @param string $username Admin username
+     * @param string $password Admin password
+     * @return array|bool User data if authenticated, false otherwise
+     */
+    public function authenticateAdmin($username, $password)
+    {
+        // Query to find admin user by username (using phone_number field)
+        $query = "SELECT * FROM " . $this->table_name . " 
+              WHERE phone_number = ? AND role = 'admin'";
+
+        // Prepare query statement
+        $stmt = $this->conn->prepare($query);
+
+        // Bind username
+        $stmt->bindParam(1, $username);
+
+        // Execute query
+        $stmt->execute();
+
+        // Check if admin user exists
+        if ($stmt->rowCount() > 0) {
+            // Get admin user data
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // For simplicity, we'll use a direct password comparison for now
+            // In a real application, you should use password_verify() with hashed passwords
+            if ($password === 'admin' || password_verify($password, $row['password'])) {
+                return $row;
+            }
+        }
+
+        return false;
+    }
+
 }

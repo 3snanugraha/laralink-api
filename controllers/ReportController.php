@@ -38,7 +38,12 @@ class ReportController
                 if ($id) {
                     $this->getReport($id);
                 } else {
-                    $this->getUserReports();
+                    // Check if we're getting user reports or all reports
+                    if (isset($_GET['user_id'])) {
+                        $this->getUserReports();
+                    } else {
+                        $this->getAllReports(); // New method to get all reports
+                    }
                 }
                 break;
 
@@ -223,12 +228,69 @@ class ReportController
         http_response_code(RESPONSE_OK);
         echo json_encode([
             'status' => 'success',
-            'data' => $reports,
-            'pagination' => [
-                'total' => $totalCount,
-                'per_page' => $limit,
-                'current_page' => $page,
-                'total_pages' => $totalPages
+            'data' => [
+                'reports' => $reports,
+                'pagination' => [
+                    'total' => $totalCount,
+                    'per_page' => $limit,
+                    'current_page' => $page,
+                    'total_pages' => $totalPages
+                ]
+            ]
+        ]);
+    }
+
+    /**
+     * Get all reports (admin function)
+     */
+    private function getAllReports()
+    {
+        // Get pagination parameters
+        $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
+        $limit = isset($_GET['limit']) ? (int) $_GET['limit'] : DEFAULT_PAGE_SIZE;
+
+        // Validate limit
+        if ($limit > MAX_PAGE_SIZE) {
+            $limit = MAX_PAGE_SIZE;
+        }
+
+        $offset = ($page - 1) * $limit;
+
+        // Get total count
+        $countQuery = "SELECT COUNT(*) as total FROM reports";
+        $countStmt = $this->db->prepare($countQuery);
+        $countStmt->execute();
+        $totalCount = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+
+        // Get reports
+        $query = "SELECT r.*, vt.type_name, u.name as user_name
+                  FROM reports r
+                  JOIN violence_types vt ON r.violence_type_id = vt.violence_type_id
+                  JOIN users u ON r.user_id = u.user_id
+                  ORDER BY r.report_date DESC
+                  LIMIT ?, ?";
+
+        $stmt = $this->db->prepare($query);
+        $stmt->bindParam(1, $offset, PDO::PARAM_INT);
+        $stmt->bindParam(2, $limit, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $reports = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Calculate pagination info
+        $totalPages = ceil($totalCount / $limit);
+
+        http_response_code(RESPONSE_OK);
+        echo json_encode([
+            'status' => 'success',
+            'data' => [
+                'reports' => $reports,
+                'pagination' => [
+                    'total' => $totalCount,
+                    'per_page' => $limit,
+                    'current_page' => $page,
+                    'total_pages' => $totalPages
+                ]
             ]
         ]);
     }
@@ -291,4 +353,3 @@ class ReportController
         return $result;
     }
 }
-

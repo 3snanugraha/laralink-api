@@ -4,6 +4,10 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+// At the beginning of index.php, add:
+error_log("Request URI: " . $_SERVER['REQUEST_URI']);
+error_log("Method: " . $_SERVER['REQUEST_METHOD']);
+
 // Set headers for API
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -115,6 +119,17 @@ switch ($resource) {
         require_once 'models/User.php';
         $controller = new UserController();
         break;
+
+    // In the admin case, add:
+    case 'admin':
+        error_log("Admin route detected. Subresource: " . $id);
+        require_once 'controllers/UserController.php';
+        require_once 'models/User.php';
+        $controller = new UserController();
+        $subresource = $id; // In admin/login, "login" is the subresource
+        $id = null;
+        break;
+
 
     case 'reports':
         require_once 'controllers/ReportController.php';
