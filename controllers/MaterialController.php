@@ -73,28 +73,15 @@ class MaterialController
      */
     private function getAllMaterials()
     {
-        $violenceTypeId = isset($_GET['violence_type_id']) ? htmlspecialchars(strip_tags($_GET['violence_type_id'])) : null;
+        // Get query parameters
         $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
         $limit = isset($_GET['limit']) ? (int) $_GET['limit'] : 10;
+        $violenceTypeId = isset($_GET['violence_type_id']) ? $_GET['violence_type_id'] : null;
+
+        // Calculate offset
         $offset = ($page - 1) * $limit;
 
-        // Count total records for pagination
-        $countQuery = "SELECT COUNT(*) as total FROM violence_materials";
-        if ($violenceTypeId) {
-            $countQuery .= " WHERE violence_type_id = ?";
-        }
-
-        $countStmt = $this->db->prepare($countQuery);
-        if ($violenceTypeId) {
-            $countStmt->execute([$violenceTypeId]);
-        } else {
-            $countStmt->execute();
-        }
-
-        $totalRecords = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
-        $totalPages = ceil($totalRecords / $limit);
-
-        // Base query
+        // Build query
         $query = "SELECT m.*, vt.type_name 
                   FROM violence_materials m
                   LEFT JOIN violence_types vt ON m.violence_type_id = vt.violence_type_id";
@@ -104,16 +91,39 @@ class MaterialController
             $query .= " WHERE m.violence_type_id = ?";
         }
 
-        $query .= " ORDER BY m.created_at DESC LIMIT $offset, $limit";
+        // Add pagination
+        $query .= " ORDER BY m.created_at DESC LIMIT ?, ?";
 
+        // Prepare statement
         $stmt = $this->db->prepare($query);
 
+        // Bind parameters
         if ($violenceTypeId) {
-            $stmt->execute([$violenceTypeId]);
+            $stmt->bindParam(1, $violenceTypeId, PDO::PARAM_INT);
+            $stmt->bindParam(2, $offset, PDO::PARAM_INT);
+            $stmt->bindParam(3, $limit, PDO::PARAM_INT);
         } else {
-            $stmt->execute();
+            $stmt->bindParam(1, $offset, PDO::PARAM_INT);
+            $stmt->bindParam(2, $limit, PDO::PARAM_INT);
         }
 
+        // Execute query
+        $stmt->execute();
+
+        // Get total count for pagination
+        $countQuery = "SELECT COUNT(*) as total FROM violence_materials";
+        if ($violenceTypeId) {
+            $countQuery .= " WHERE violence_type_id = ?";
+            $countStmt = $this->db->prepare($countQuery);
+            $countStmt->execute([$violenceTypeId]);
+        } else {
+            $countStmt = $this->db->prepare($countQuery);
+            $countStmt->execute();
+        }
+        $totalCount = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+        $totalPages = ceil($totalCount / $limit);
+
+        // Fetch materials
         $materials = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         http_response_code(RESPONSE_OK);
@@ -122,10 +132,10 @@ class MaterialController
             'data' => [
                 'materials' => $materials,
                 'pagination' => [
-                    'total_records' => $totalRecords,
-                    'total_pages' => $totalPages,
+                    'total' => $totalCount,
+                    'per_page' => $limit,
                     'current_page' => $page,
-                    'limit' => $limit
+                    'total_pages' => $totalPages
                 ]
             ]
         ]);
@@ -142,18 +152,13 @@ class MaterialController
                   FROM violence_materials m
                   LEFT JOIN violence_types vt ON m.violence_type_id = vt.violence_type_id
                   WHERE m.material_id = ?";
-
         $stmt = $this->db->prepare($query);
         $stmt->execute([$id]);
 
         if ($stmt->rowCount() > 0) {
             $material = $stmt->fetch(PDO::FETCH_ASSOC);
-
             http_response_code(RESPONSE_OK);
-            echo json_encode([
-                'status' => 'success',
-                'data' => $material
-            ]);
+            echo json_encode(['status' => 'success', 'data' => $material]);
         } else {
             http_response_code(RESPONSE_NOT_FOUND);
             echo json_encode(['status' => 'error', 'message' => 'Material not found']);
@@ -184,11 +189,17 @@ class MaterialController
         $content = htmlspecialchars(strip_tags($data->content));
         $violence_type_id = htmlspecialchars(strip_tags($data->violence_type_id));
 
+        // Handle image_url if provided
+        $image_url = null;
+        if (isset($data->image_url) && !empty($data->image_url)) {
+            $image_url = htmlspecialchars(strip_tags($data->image_url));
+        }
+
         // Insert material
-        $query = "INSERT INTO violence_materials (title, content, violence_type_id) VALUES (?, ?, ?)";
+        $query = "INSERT INTO violence_materials (title, content, violence_type_id, image_url) VALUES (?, ?, ?, ?)";
         $stmt = $this->db->prepare($query);
 
-        if ($stmt->execute([$title, $content, $violence_type_id])) {
+        if ($stmt->execute([$title, $content, $violence_type_id, $image_url])) {
             $materialId = $this->db->lastInsertId();
 
             http_response_code(RESPONSE_CREATED);
@@ -199,7 +210,8 @@ class MaterialController
                     'material_id' => $materialId,
                     'title' => $title,
                     'content' => $content,
-                    'violence_type_id' => $violence_type_id
+                    'violence_type_id' => $violence_type_id,
+                    'image_url' => $image_url
                 ]
             ]);
         } else {
@@ -246,6 +258,12 @@ class MaterialController
         if (isset($data->violence_type_id) && !empty($data->violence_type_id)) {
             $updateFields[] = "violence_type_id = ?";
             $params[] = htmlspecialchars(strip_tags($data->violence_type_id));
+        }
+
+        // Handle image_url update
+        if (isset($data->image_url)) {
+            $updateFields[] = "image_url = ?";
+            $params[] = !empty($data->image_url) ? htmlspecialchars(strip_tags($data->image_url)) : null;
         }
 
         if (empty($updateFields)) {
@@ -303,22 +321,11 @@ class MaterialController
             return;
         }
 
-        // Get material data to delete image if exists
-        $material = $checkStmt->fetch(PDO::FETCH_ASSOC);
-
         // Delete material
         $query = "DELETE FROM violence_materials WHERE material_id = ?";
         $stmt = $this->db->prepare($query);
 
         if ($stmt->execute([$id])) {
-            // Delete associated image if exists
-            if (!empty($material['image_url'])) {
-                $imagePath = BASE_PATH . '/' . $material['image_url'];
-                if (file_exists($imagePath)) {
-                    unlink($imagePath);
-                }
-            }
-
             http_response_code(RESPONSE_OK);
             echo json_encode([
                 'status' => 'success',
@@ -348,17 +355,59 @@ class MaterialController
             return;
         }
 
-        // Handle file upload
-        require_once 'utils/FileUploader.php';
-        $fileUploader = new FileUploader();
-        $uploadResult = $fileUploader->uploadMaterialImage($id);
-
-        if ($uploadResult['status'] === 'success') {
-            http_response_code(RESPONSE_OK);
-            echo json_encode($uploadResult);
-        } else {
+        // Check if file was uploaded
+        if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
             http_response_code(RESPONSE_BAD_REQUEST);
-            echo json_encode($uploadResult);
+            echo json_encode(['status' => 'error', 'message' => 'No image file uploaded or upload error']);
+            return;
+        }
+
+        // Define upload directory
+        $uploadDir = 'uploads/materials/';
+        if (!file_exists($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        // Generate unique filename
+        $fileExtension = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
+        $newFilename = uniqid() . '.' . $fileExtension;
+        $targetPath = $uploadDir . $newFilename;
+
+        // Check file type
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+        if (!in_array($_FILES['image']['type'], $allowedTypes)) {
+            http_response_code(RESPONSE_BAD_REQUEST);
+            echo json_encode(['status' => 'error', 'message' => 'Invalid file type. Only JPG, PNG, and GIF are allowed']);
+            return;
+        }
+
+        // Move uploaded file
+        if (move_uploaded_file($_FILES['image']['tmp_name'], $targetPath)) {
+            // Update material with image URL
+            $query = "UPDATE violence_materials SET image_url = ?, updated_at = NOW() WHERE material_id = ?";
+            $stmt = $this->db->prepare($query);
+
+            $imageUrl = $targetPath; // Store the relative path
+
+            if ($stmt->execute([$imageUrl, $id])) {
+                http_response_code(RESPONSE_OK);
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Image uploaded successfully',
+                    'data' => [
+                        'image_url' => $imageUrl
+                    ]
+                ]);
+            } else {
+                // Delete the uploaded file if database update fails
+                unlink($targetPath);
+                http_response_code(RESPONSE_INTERNAL_ERROR);
+                echo json_encode(['status' => 'error', 'message' => 'Unable to update material with image URL']);
+            }
+        } else {
+            http_response_code(RESPONSE_INTERNAL_ERROR);
+            echo json_encode(['status' => 'error', 'message' => 'Failed to move uploaded file']);
         }
     }
 }
+

@@ -44,19 +44,35 @@ class AuthMiddleware
      */
     public function validateAdmin($userId)
     {
+        error_log("validateAdmin: Starting admin validation for user ID: " . $userId);
+
         if (!$userId) {
             error_log("validateAdmin: No user ID provided");
             return false;
         }
 
-        // Check if user exists, is active, and has admin role
-        $query = "SELECT * FROM users WHERE user_id = ? AND status = ? AND role = ?";
-        $stmt = $this->db->prepare($query);
-        $stmt->execute([$userId, USER_STATUS_ACTIVE, USER_ROLE_ADMIN]);
+        try {
+            // Check if user exists, is active, and has admin role
+            $query = "SELECT * FROM users WHERE user_id = ? AND status = ? AND role = ?";
+            error_log("validateAdmin: Query: " . $query);
+            error_log("validateAdmin: Parameters: " . $userId . ", " . USER_STATUS_ACTIVE . ", " . USER_ROLE_ADMIN);
 
-        $result = $stmt->rowCount() > 0;
-        error_log("validateAdmin: User ID " . $userId . " is admin: " . ($result ? "true" : "false"));
-        return $result;
+            $stmt = $this->db->prepare($query);
+            $stmt->execute([$userId, USER_STATUS_ACTIVE, USER_ROLE_ADMIN]);
+
+            $result = $stmt->rowCount() > 0;
+            error_log("validateAdmin: Query result: " . ($result ? "true" : "false"));
+
+            if ($result) {
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                error_log("validateAdmin: User data: " . json_encode($user));
+            }
+
+            return $result;
+        } catch (Exception $e) {
+            error_log("validateAdmin: Database error: " . $e->getMessage());
+            return false;
+        }
     }
 
 
@@ -141,24 +157,29 @@ class AuthMiddleware
      */
     public function validateAdminAccess()
     {
+        error_log("validateAdminAccess: Starting admin access validation");
+
         // Get user ID from request
         $userId = null;
         $headers = getallheaders();
 
+        error_log("validateAdminAccess: Headers: " . json_encode($headers));
+
         // Check in Authorization header
-        if (isset($headers['Authorization'])) {
-            $authHeader = $headers['Authorization'];
+        if (isset($headers['Authorization']) || isset($headers['authorization'])) {
+            $authHeader = isset($headers['Authorization']) ? $headers['Authorization'] : $headers['authorization'];
+            error_log("validateAdminAccess: Authorization header: " . $authHeader);
+
             if (strpos($authHeader, 'Bearer ') === 0) {
                 $userId = substr($authHeader, 7);
-                // Log for debugging
-                error_log("Found user ID in Authorization header: " . $userId);
+                error_log("validateAdminAccess: Found user ID in Authorization header: " . $userId);
             }
         }
 
         // Check in GET parameters if not found in header
         if (!$userId && isset($_GET['admin_id'])) {
             $userId = $_GET['admin_id'];
-            error_log("Found user ID in GET parameter: " . $userId);
+            error_log("validateAdminAccess: Found user ID in GET parameter: " . $userId);
         }
 
         // Check in POST/PUT data if not found in GET
@@ -166,20 +187,21 @@ class AuthMiddleware
             $data = json_decode(file_get_contents("php://input"), true);
             if (isset($data['admin_id'])) {
                 $userId = $data['admin_id'];
-                error_log("Found user ID in request body: " . $userId);
+                error_log("validateAdminAccess: Found user ID in request body: " . $userId);
             }
         }
 
         if (!$userId) {
-            error_log("No user ID found in request");
+            error_log("validateAdminAccess: No user ID found in request");
             return false;
         }
 
         // Validate that the user is an admin
         $isAdmin = $this->validateAdmin($userId);
-        error_log("User ID: " . $userId . " is admin: " . ($isAdmin ? "true" : "false"));
+        error_log("validateAdminAccess: User ID " . $userId . " is admin: " . ($isAdmin ? "true" : "false"));
         return $isAdmin;
     }
+
 
 
     /**
@@ -191,8 +213,13 @@ class AuthMiddleware
      */
     public function applyAdminAuth()
     {
-        if (!$this->validateAdminAccess()) {
-            http_response_code(RESPONSE_UNAUTHORIZED);
+        error_log("applyAdminAuth: Starting admin authentication");
+
+        $isAdmin = $this->validateAdminAccess();
+
+        if (!$isAdmin) {
+            error_log("applyAdminAuth: Admin authentication failed");
+            http_response_code(401);
             echo json_encode([
                 'status' => 'error',
                 'message' => 'Admin authentication required'
@@ -200,6 +227,7 @@ class AuthMiddleware
             return false;
         }
 
+        error_log("applyAdminAuth: Admin authentication successful");
         return true;
     }
 }
