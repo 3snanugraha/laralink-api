@@ -42,7 +42,7 @@ class ReportController
                     if (isset($_GET['user_id'])) {
                         $this->getUserReports();
                     } else {
-                        $this->getAllReports(); // New method to get all reports
+                        $this->getAllReports(); // Admin function to get all reports
                     }
                 }
                 break;
@@ -55,12 +55,31 @@ class ReportController
                 }
                 break;
 
+            case 'PUT':
+                if ($id && $subresource === 'status') {
+                    $this->updateReportStatus($id); // Admin function to update report status
+                } else {
+                    http_response_code(RESPONSE_METHOD_NOT_ALLOWED);
+                    echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
+                }
+                break;
+
+            case 'DELETE':
+                if ($id) {
+                    $this->deleteReport($id); // Admin function to delete a report
+                } else {
+                    http_response_code(RESPONSE_BAD_REQUEST);
+                    echo json_encode(['status' => 'error', 'message' => 'Report ID is required']);
+                }
+                break;
+
             default:
                 http_response_code(RESPONSE_METHOD_NOT_ALLOWED);
                 echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
                 break;
         }
     }
+
 
     /**
      * Create a new report
@@ -351,5 +370,165 @@ class ReportController
         }
 
         return $result;
+    }
+
+
+    /**
+     * Update report status (admin function)
+     * 
+     * @param int $id Report ID
+     */
+    private function updateReportStatus($id)
+    {
+        // Get posted data
+        $data = json_decode(file_get_contents("php://input"));
+
+        // Validate input
+        if (
+            !isset($data->status) || empty($data->status) ||
+            !isset($data->notes) || empty($data->notes) ||
+            !isset($data->changed_by) || empty($data->changed_by)
+        ) {
+            http_response_code(RESPONSE_BAD_REQUEST);
+            echo json_encode(['status' => 'error', 'message' => 'Status, notes, and changed_by are required']);
+            return;
+        }
+
+        // Check if status is valid
+        $validStatuses = [
+            REPORT_STATUS_SUBMITTED,
+            REPORT_STATUS_PROCESSING,
+            REPORT_STATUS_INVESTIGATING,
+            REPORT_STATUS_RESOLVED,
+            REPORT_STATUS_CLOSED
+        ];
+
+        if (!in_array($data->status, $validStatuses)) {
+            http_response_code(RESPONSE_BAD_REQUEST);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Invalid status. Must be one of: ' . implode(', ', $validStatuses)
+            ]);
+            return;
+        }
+
+        // Check if report exists
+        $checkQuery = "SELECT * FROM reports WHERE report_id = ?";
+        $checkStmt = $this->db->prepare($checkQuery);
+        $checkStmt->execute([$id]);
+
+        if ($checkStmt->rowCount() === 0) {
+            http_response_code(RESPONSE_NOT_FOUND);
+            echo json_encode(['status' => 'error', 'message' => 'Report not found']);
+            return;
+        }
+
+        // Add status history
+        $result = $this->addReportStatusHistory(
+            $id,
+            $data->status,
+            htmlspecialchars(strip_tags($data->notes)),
+            htmlspecialchars(strip_tags($data->changed_by))
+        );
+
+        if ($result) {
+            // Get updated report
+            $reportQuery = "SELECT r.*, vt.type_name 
+                      FROM reports r
+                      JOIN violence_types vt ON r.violence_type_id = vt.violence_type_id
+                      WHERE r.report_id = ?";
+            $reportStmt = $this->db->prepare($reportQuery);
+            $reportStmt->execute([$id]);
+            $report = $reportStmt->fetch(PDO::FETCH_ASSOC);
+
+            // Get status history
+            $historyQuery = "SELECT * FROM report_status_history WHERE report_id = ? ORDER BY changed_at DESC";
+            $historyStmt = $this->db->prepare($historyQuery);
+            $historyStmt->execute([$id]);
+            $history = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Add history to report
+            $report['status_history'] = $history;
+
+            http_response_code(RESPONSE_OK);
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Report status updated successfully',
+                'data' => $report
+            ]);
+        } else {
+            http_response_code(RESPONSE_INTERNAL_ERROR);
+            echo json_encode(['status' => 'error', 'message' => 'Unable to update report status']);
+        }
+    }
+
+    /**
+     * Delete a report (admin function)
+     * 
+     * @param int $id Report ID
+     */
+    private function deleteReport($id)
+    {
+        // Check if report exists
+        $checkQuery = "SELECT * FROM reports WHERE report_id = ?";
+        $checkStmt = $this->db->prepare($checkQuery);
+        $checkStmt->execute([$id]);
+
+        if ($checkStmt->rowCount() === 0) {
+            http_response_code(RESPONSE_NOT_FOUND);
+            echo json_encode(['status' => 'error', 'message' => 'Report not found']);
+            return;
+        }
+
+        // Begin transaction
+        $this->db->beginTransaction();
+
+        try {
+            // Delete report media files
+            $mediaQuery = "SELECT * FROM report_media WHERE report_id = ?";
+            $mediaStmt = $this->db->prepare($mediaQuery);
+            $mediaStmt->execute([$id]);
+            $mediaFiles = $mediaStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($mediaFiles as $media) {
+                $filePath = BASE_PATH . '/' . $media['file_path'];
+                if (file_exists($filePath)) {
+                    unlink($filePath);
+                }
+            }
+
+            // Delete report media records
+            $deleteMediaQuery = "DELETE FROM report_media WHERE report_id = ?";
+            $deleteMediaStmt = $this->db->prepare($deleteMediaQuery);
+            $deleteMediaStmt->execute([$id]);
+
+            // Delete report status history
+            $deleteHistoryQuery = "DELETE FROM report_status_history WHERE report_id = ?";
+            $deleteHistoryStmt = $this->db->prepare($deleteHistoryQuery);
+            $deleteHistoryStmt->execute([$id]);
+
+            // Delete report
+            $deleteReportQuery = "DELETE FROM reports WHERE report_id = ?";
+            $deleteReportStmt = $this->db->prepare($deleteReportQuery);
+            $deleteReportStmt->execute([$id]);
+
+            // Commit transaction
+            $this->db->commit();
+
+            http_response_code(RESPONSE_OK);
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Report and all associated data deleted successfully'
+            ]);
+        } catch (Exception $e) {
+            // Rollback transaction on error
+            $this->db->rollBack();
+
+            http_response_code(RESPONSE_INTERNAL_ERROR);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Unable to delete report: ' . $e->getMessage()
+            ]);
+        }
     }
 }

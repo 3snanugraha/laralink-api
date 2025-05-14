@@ -4,10 +4,6 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// At the beginning of index.php, add:
-error_log("Request URI: " . $_SERVER['REQUEST_URI']);
-error_log("Method: " . $_SERVER['REQUEST_METHOD']);
-
 // Set headers for API
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -55,16 +51,30 @@ $uri = explode('/', $uri);
 $uri = array_filter($uri);
 $uri = array_values($uri);
 
+// Find the index of 'laralink-api' to determine where the actual API path starts
+$apiBaseIndex = array_search('laralink-api', $uri);
+if ($apiBaseIndex !== false) {
+    // Remove everything before and including 'laralink-api'
+    $uri = array_slice($uri, $apiBaseIndex + 1);
+}
+
 // Initialize variables
 $resource = '';
 $id = null;
 $subresource = null;
 
-// Get the total number of segments
-$uriCount = count($uri);
+// Special case for admin/login
+if (count($uri) >= 2 && $uri[0] === 'admin' && $uri[1] === 'login') {
+    $resource = 'admin';
+    $subresource = 'login';
+    $id = null;
+}
+// Regular URL parsing for other routes
+else if (count($uri) > 0) {
+    // Get the total number of segments
+    $uriCount = count($uri);
 
-// Extract resource, ID, and subresource from URI
-if ($uriCount > 0) {
+    // Extract resource, ID, and subresource from URI
     // Check if we have at least one segment
     $lastIndex = $uriCount - 1;
 
@@ -72,12 +82,10 @@ if ($uriCount > 0) {
     if (is_numeric($uri[$lastIndex])) {
         // If the last segment is numeric, it's an ID
         $id = $uri[$lastIndex];
-
         // The second-to-last segment is the resource
         if ($lastIndex > 0) {
             $resource = $uri[$lastIndex - 1];
         }
-
         // Check if there's a subresource (for routes like /reports/1/media)
         if ($lastIndex < count($uri) - 1) {
             $subresource = $uri[$lastIndex + 1];
@@ -112,6 +120,39 @@ if ($method === 'POST' || $method === 'PUT') {
 $logger = new Logger();
 $logger->logRequest();
 
+// Check if this is an admin route that needs protection
+$isAdminRoute = false;
+$adminProtectedRoutes = [
+    'users' => ['DELETE'],
+    'reports' => ['PUT', 'DELETE'],
+    'violence-types' => ['POST', 'PUT', 'DELETE'],
+    'materials' => ['POST', 'PUT', 'DELETE'],
+    'contacts' => ['POST', 'PUT', 'DELETE']
+];
+
+// Special case for admin/login which doesn't need admin auth
+$isAdminLoginRoute = ($resource === 'admin' && $subresource === 'login');
+
+// Check if current route needs admin authentication
+if (
+    (isset($adminProtectedRoutes[$resource]) && in_array($method, $adminProtectedRoutes[$resource])) ||
+    (isset($adminProtectedRoutes["$resource/$subresource"]) && in_array($method, $adminProtectedRoutes["$resource/$subresource"])) &&
+    !$isAdminLoginRoute
+) {
+    $isAdminRoute = true;
+}
+
+
+// Apply admin authentication for protected routes
+if ($isAdminRoute) {
+    require_once 'middleware/AuthMiddleware.php';
+    $authMiddleware = new AuthMiddleware();
+
+    if (!$authMiddleware->applyAdminAuth()) {
+        exit; // Stop execution if admin auth fails
+    }
+}
+
 // Route to appropriate controller based on resource
 switch ($resource) {
     case 'users':
@@ -122,12 +163,11 @@ switch ($resource) {
 
     // In the admin case, add:
     case 'admin':
-        error_log("Admin route detected. Subresource: " . $id);
+        error_log("Admin route detected. Subresource: " . $subresource);
         require_once 'controllers/UserController.php';
         require_once 'models/User.php';
         $controller = new UserController();
-        $subresource = $id; // In admin/login, "login" is the subresource
-        $id = null;
+        // Don't overwrite the subresource parameter
         break;
 
 

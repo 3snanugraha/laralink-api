@@ -39,6 +39,40 @@ class Validator
     }
 
     /**
+     * Validate admin login data
+     * 
+     * @param object $data Admin login data
+     * @return bool True if valid, false otherwise
+     */
+    public function validateAdminLogin($data)
+    {
+        $errors = [];
+
+        // Check for phone_number/username
+        $hasPhoneNumber = false;
+        if (isset($data->phone_number) && !empty($data->phone_number)) {
+            $hasPhoneNumber = true;
+        } else if (isset($data->username) && !empty($data->username)) {
+            $hasPhoneNumber = true;
+        } else {
+            $errors['phone_number'] = 'Phone number/username is required';
+        }
+
+        // Check for password
+        if (!isset($data->password) || empty($data->password)) {
+            $errors['password'] = 'Password is required';
+        }
+
+        // If there are errors, send validation error response
+        if (!empty($errors)) {
+            ApiResponse::validationError($errors);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Validate report creation data
      * 
      * @param object $data Report creation data
@@ -148,5 +182,122 @@ class Validator
     {
         $d = DateTime::createFromFormat('Y-m-d H:i:s', $date);
         return $d && $d->format('Y-m-d H:i:s') === $date;
+    }
+
+    /**
+     * Validate material creation/update data
+     * 
+     * @param object $data Material data
+     * @return bool True if valid, false otherwise
+     */
+    public function validateMaterial($data)
+    {
+        $errors = [];
+
+        // Check required fields for creation
+        if (isset($data->_method) && $data->_method === 'POST') {
+            if (!isset($data->title) || empty($data->title)) {
+                $errors['title'] = 'Title is required';
+            }
+
+            if (!isset($data->content) || empty($data->content)) {
+                $errors['content'] = 'Content is required';
+            }
+
+            if (!isset($data->violence_type_id) || empty($data->violence_type_id)) {
+                $errors['violence_type_id'] = 'Violence type is required';
+            }
+        }
+
+        // Validate title length if provided
+        if (isset($data->title) && !empty($data->title)) {
+            if (strlen($data->title) > 255) {
+                $errors['title'] = 'Title must be less than 255 characters';
+            }
+        }
+
+        // If there are errors, send validation error response
+        if (!empty($errors)) {
+            ApiResponse::validationError($errors);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Validate violence type creation/update data
+     * 
+     * @param object $data Violence type data
+     * @return bool True if valid, false otherwise
+     */
+    public function validateViolenceType($data)
+    {
+        $errors = [];
+
+        // Check required fields for creation
+        if (isset($data->_method) && $data->_method === 'POST') {
+            if (!isset($data->type_name) || empty($data->type_name)) {
+                $errors['type_name'] = 'Type name is required';
+            }
+        }
+
+        // Validate type name length if provided
+        if (isset($data->type_name) && !empty($data->type_name)) {
+            if (strlen($data->type_name) > 100) {
+                $errors['type_name'] = 'Type name must be less than 100 characters';
+            }
+        }
+
+        // If there are errors, send validation error response
+        if (!empty($errors)) {
+            ApiResponse::validationError($errors);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Validate contact creation/update data
+     * 
+     * @param object $data Contact data
+     * @return bool True if valid, false otherwise
+     */
+    public function validateContact($data)
+    {
+        $errors = [];
+        // Check required fields for creation
+        if (isset($data->_method) && $data->_method === 'POST') {
+            if (!isset($data->contact_type) || empty($data->contact_type)) {
+                $errors['contact_type'] = 'Contact type is required';
+            }
+
+            if (!isset($data->contact_value) || empty($data->contact_value)) {
+                $errors['contact_value'] = 'Contact value is required';
+            }
+        }
+
+        // Validate contact type length if provided
+        if (isset($data->contact_type) && !empty($data->contact_type)) {
+            if (strlen($data->contact_type) > 50) {
+                $errors['contact_type'] = 'Contact type must be less than 50 characters';
+            }
+        }
+
+        // Validate contact value length if provided
+        if (isset($data->contact_value) && !empty($data->contact_value)) {
+            if (strlen($data->contact_value) > 255) {
+                $errors['contact_value'] = 'Contact value must be less than 255 characters';
+            }
+        }
+
+        // If there are errors, send validation error response
+        if (!empty($errors)) {
+            ApiResponse::validationError($errors);
+            return false;
+        }
+
+        return true;
     }
 }
