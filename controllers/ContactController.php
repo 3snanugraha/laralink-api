@@ -68,7 +68,17 @@ class ContactController
      */
     private function getAllContacts()
     {
-        $query = "SELECT * FROM contact_info WHERE is_active = 1 ORDER BY contact_type";
+        // Check if user is admin (you may need to implement this check)
+        $isAdmin = isset($_GET['admin']) && $_GET['admin'] === 'true';
+
+        if ($isAdmin) {
+            // Admin sees all contacts, regardless of status
+            $query = "SELECT * FROM contact_info ORDER BY contact_type";
+        } else {
+            // Regular users only see active contacts
+            $query = "SELECT * FROM contact_info WHERE is_active = 1 ORDER BY contact_type";
+        }
+
         $stmt = $this->db->prepare($query);
         $stmt->execute();
 

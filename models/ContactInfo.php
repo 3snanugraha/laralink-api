@@ -28,12 +28,18 @@ class ContactInfo
      * 
      * @return PDOStatement Result set
      */
-    public function read()
+    public function read($adminView = false)
     {
-        // Query to read all active contacts
-        $query = "SELECT * FROM " . $this->table_name . " 
+        if ($adminView) {
+            // Query to read all contacts for admin
+            $query = "SELECT * FROM " . $this->table_name . " 
+                  ORDER BY contact_type";
+        } else {
+            // Query to read only active contacts for regular users
+            $query = "SELECT * FROM " . $this->table_name . " 
                   WHERE is_active = 1 
                   ORDER BY contact_type";
+        }
 
         // Prepare query statement
         $stmt = $this->conn->prepare($query);
