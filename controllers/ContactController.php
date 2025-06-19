@@ -98,7 +98,17 @@ class ContactController
      */
     private function getContact($id)
     {
-        $query = "SELECT * FROM contact_info WHERE contact_id = ? AND is_active = 1";
+        // Check if user is admin (via query parameter)
+        $isAdmin = isset($_GET['admin']) && $_GET['admin'] === 'true';
+
+        if ($isAdmin) {
+            // Admin can see all contacts, active or inactive
+            $query = "SELECT * FROM contact_info WHERE contact_id = ?";
+        } else {
+            // Regular users only see active contacts
+            $query = "SELECT * FROM contact_info WHERE contact_id = ? AND is_active = 1";
+        }
+
         $stmt = $this->db->prepare($query);
         $stmt->execute([$id]);
 
@@ -115,6 +125,7 @@ class ContactController
             echo json_encode(['status' => 'error', 'message' => 'Contact not found']);
         }
     }
+
 
     /**
      * Create a new contact
