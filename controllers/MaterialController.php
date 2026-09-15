@@ -202,6 +202,9 @@ class MaterialController
         if ($stmt->execute([$title, $content, $violence_type_id, $image_url])) {
             $materialId = $this->db->lastInsertId();
 
+            // Kirim push notification ke semua user tentang materi baru
+            $this->sendNewMaterialNotification($materialId, $title, $content);
+
             http_response_code(RESPONSE_CREATED);
             echo json_encode([
                 'status' => 'success',
@@ -407,6 +410,37 @@ class MaterialController
         } else {
             http_response_code(RESPONSE_INTERNAL_ERROR);
             echo json_encode(['status' => 'error', 'message' => 'Failed to move uploaded file']);
+        }
+    }
+
+    /**
+     * Kirim notifikasi push ke semua user ketika materi baru dibuat
+     *
+     * @param int    $materialId ID materi yang baru dibuat
+     * @param string $title      Judul materi
+     * @param string $content    Konten materi (untuk preview)
+     */
+    private function sendNewMaterialNotification($materialId, $title, $content)
+    {
+        try {
+            require_once __DIR__ . '/../utils/NotificationService.php';
+            $notificationService = new NotificationService($this->db);
+
+            // Potong konten untuk preview di notifikasi (max 100 karakter)
+            $preview = strlen($content) > 100 ? substr($content, 0, 100) . '...' : $content;
+
+            $notifTitle = 'Materi Edukasi Baru';
+            $notifBody = $title . ': ' . $preview;
+            $notifData = [
+                'type' => 'new_material',
+                'material_id' => (string) $materialId,
+                'screen' => 'materials',
+            ];
+
+            $notificationService->sendToAllUsers($notifTitle, $notifBody, $notifData);
+        } catch (Exception $e) {
+            // Gagal kirim notifikasi tidak boleh mengganggu proses pembuatan materi
+            error_log("MaterialController: Gagal mengirim notifikasi - " . $e->getMessage());
         }
     }
 }

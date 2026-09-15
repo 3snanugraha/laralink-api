@@ -60,6 +60,8 @@ class UserController
                         $this->updateUserStatus($id);
                     } elseif ($subresource === 'role') {
                         $this->updateUserRole($id);
+                    } elseif ($subresource === 'push-token') {
+                        $this->updatePushToken($id);
                     } else {
                         $this->updateUser($id);
                     }
@@ -548,6 +550,50 @@ class UserController
         } else {
             http_response_code(RESPONSE_INTERNAL_ERROR);
             echo json_encode(['status' => 'error', 'message' => 'Unable to delete user']);
+        }
+    }
+
+    /**
+     * Update push token untuk notifikasi
+     *
+     * @param int $id User ID
+     */
+    private function updatePushToken($id)
+    {
+        $data = json_decode(file_get_contents("php://input"));
+
+        if (!isset($data->push_token) || empty($data->push_token)) {
+            http_response_code(RESPONSE_BAD_REQUEST);
+            echo json_encode(['status' => 'error', 'message' => 'push_token is required']);
+            return;
+        }
+
+        // Cek user ada
+        $checkQuery = "SELECT * FROM users WHERE user_id = ?";
+        $checkStmt = $this->db->prepare($checkQuery);
+        $checkStmt->execute([$id]);
+
+        if ($checkStmt->rowCount() === 0) {
+            http_response_code(RESPONSE_NOT_FOUND);
+            echo json_encode(['status' => 'error', 'message' => 'User not found']);
+            return;
+        }
+
+        $pushToken = htmlspecialchars(strip_tags($data->push_token));
+
+        // Simpan token ke kolom fcm_token (kompatibel dengan schema yang ada)
+        $query = "UPDATE users SET fcm_token = ? WHERE user_id = ?";
+        $stmt = $this->db->prepare($query);
+
+        if ($stmt->execute([$pushToken, $id])) {
+            http_response_code(RESPONSE_OK);
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Push token updated successfully'
+            ]);
+        } else {
+            http_response_code(RESPONSE_INTERNAL_ERROR);
+            echo json_encode(['status' => 'error', 'message' => 'Unable to update push token']);
         }
     }
 
