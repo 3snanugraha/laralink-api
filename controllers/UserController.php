@@ -562,9 +562,9 @@ class UserController
     {
         $data = json_decode(file_get_contents("php://input"));
 
-        if (!isset($data->push_token) || empty($data->push_token)) {
+        if (!property_exists($data, 'push_token')) {
             http_response_code(RESPONSE_BAD_REQUEST);
-            echo json_encode(['status' => 'error', 'message' => 'push_token is required']);
+            echo json_encode(['status' => 'error', 'message' => 'push_token property is required']);
             return;
         }
 
@@ -579,7 +579,7 @@ class UserController
             return;
         }
 
-        $pushToken = htmlspecialchars(strip_tags($data->push_token));
+        $pushToken = empty($data->push_token) ? null : htmlspecialchars(strip_tags($data->push_token));
 
         // Simpan token ke kolom fcm_token (kompatibel dengan schema yang ada)
         $query = "UPDATE users SET fcm_token = ? WHERE user_id = ?";
